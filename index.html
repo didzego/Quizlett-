@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kartītes</title>
+<meta name="description" content="Make your own flashcards and test questions and learn them – works offline.">
+<meta name="theme-color" content="#5b48d9">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kartītes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<style>
+  :root {
+    --bg: #f4f3fa; --card: #ffffff; --text: #1b1a24; --muted: #646277; --line: #e2e0ee;
+    --accent: #5b48d9; --accent-hover: #4a38c4; --accent-soft: #edeafd; --accent-ink: #ffffff;
+    --ok: #15803d; --ok-bg: #e7f6ec; --bad: #c2410c; --bad-bg: #fdeee5; --mid: #ca8a04;
+    --radius: 16px; --shadow: 0 1px 2px rgba(20,16,60,.05), 0 3px 10px rgba(20,16,60,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121119; --card: #1c1b26; --text: #ebeaf3; --muted: #a09eb5; --line: #2e2c3d;
+      --accent: #8f80f4; --accent-hover: #a397f7; --accent-soft: #26223f; --accent-ink: #120f2b;
+      --ok: #6fd69a; --ok-bg: #153023; --bad: #f6a37b; --bad-bg: #3a2216; --mid: #f0c96a;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  .bar { position: sticky; top: 0; z-index: 10; background: var(--bg); background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: saturate(1.4) blur(10px); -webkit-backdrop-filter: saturate(1.4) blur(10px); border-bottom: 1px solid var(--line); }
+  .bar-in { max-width: 760px; margin: 0 auto; display: flex; align-items: center; gap: 8px; padding: 10px 14px; }
+  .iconbtn { border: 0; background: transparent; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: var(--accent); flex: none; }
+  .iconbtn:hover { background: var(--accent-soft); }
+  .brand { font-weight: 750; flex: 1; display: flex; align-items: center; gap: 8px; font-size: 17px; min-width: 0; }
+  .brand .dot { width: 26px; height: 26px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; flex: none; }
+  .lang { display: flex; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 3px; flex: none; }
+  .lang button { border: 0; background: transparent; padding: 5px 11px; border-radius: 7px; font-size: 14px; font-weight: 650; color: var(--muted); }
+  .lang button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+
+  main { max-width: 760px; margin: 0 auto; padding: 18px 16px 60px; }
+  h1 { font-size: 26px; line-height: 1.2; margin: 6px 0 6px; letter-spacing: -.015em; word-break: break-word; }
+  .lede { color: var(--muted); margin: 0 0 16px; }
+  .eyebrow { font-size: 13px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 700; margin: 22px 0 10px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); margin-bottom: 12px; }
+  .banner { background: var(--bad-bg); color: var(--bad); border-radius: 12px; padding: 10px 14px; font-size: 14.5px; margin-bottom: 14px; }
+
+  .primary { width: 100%; border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 17px; padding: 14px; border-radius: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .primary:hover { background: var(--accent-hover); }
+  .primary:disabled { opacity: .45; cursor: not-allowed; }
+  .secondary { width: 100%; border: 1px solid var(--line); background: var(--card); font-weight: 650; padding: 12px; border-radius: 14px; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .danger { color: var(--bad); }
+  .danger.armed { background: var(--bad); color: #fff; border-color: var(--bad); }
+  .linkbtn { border: 0; background: none; color: var(--accent); font-weight: 600; text-decoration: underline; padding: 0; }
+
+  .tiles { display: grid; gap: 10px; }
+  .tile { display: flex; gap: 14px; align-items: center; width: 100%; text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 15px 16px; box-shadow: var(--shadow); }
+  .tile:hover { border-color: var(--accent); }
+  .tile .ic { flex: none; width: 46px; height: 46px; border-radius: 14px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+  .tile .tx { flex: 1; min-width: 0; }
+  .tile .tt { font-weight: 700; font-size: 17px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tile .ts { color: var(--muted); font-size: 14.5px; display: block; }
+  .tile .chev { color: var(--muted); flex: none; }
+  .meter { height: 5px; background: var(--line); border-radius: 99px; overflow: hidden; margin-top: 8px; }
+  .meter > span { display: block; height: 100%; background: var(--ok); border-radius: 99px; }
+
+  .empty { text-align: center; padding: 34px 18px; }
+  .empty .big { width: 72px; height: 72px; border-radius: 22px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; margin: 0 auto 14px; }
+  .empty h2 { margin: 0 0 6px; font-size: 20px; }
+  .empty p { color: var(--muted); margin: 0 0 18px; }
+
+  .modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0 8px; }
+  .mode { border: 1px solid var(--line); background: var(--card); border-radius: 16px; padding: 14px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; box-shadow: var(--shadow); }
+  .mode:hover { border-color: var(--accent); }
+  .mode .ic { width: 42px; height: 42px; border-radius: 13px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+  .mode b { font-size: 15px; }
+  .mode small { color: var(--muted); font-size: 12.5px; line-height: 1.3; }
+  .toggles { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }
+  .tgl { border: 1px solid var(--line); background: var(--card); color: var(--muted); border-radius: 999px; padding: 6px 12px; font-size: 14px; font-weight: 600; display: inline-flex; gap: 6px; align-items: center; }
+  .tgl[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .actions .secondary { margin-top: 0; font-size: 14.5px; padding: 11px 8px; }
+  .clist .row { display: flex; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); align-items: flex-start; }
+  .clist .row:first-child { border-top: 0; padding-top: 0; }
+  .clist .dotm { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--line); margin-top: 7px; }
+  .clist .dotm.m1 { background: var(--mid); }
+  .clist .dotm.m2 { background: var(--ok); }
+  .clist .f { font-weight: 650; white-space: pre-wrap; word-break: break-word; }
+  .clist .b { color: var(--muted); font-size: 15px; white-space: pre-wrap; word-break: break-word; }
+  .clist img { width: 54px; height: 54px; object-fit: cover; border-radius: 8px; flex: none; }
+  .tag { display: inline-block; font-size: 11.5px; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-radius: 6px; padding: 1px 6px; margin-left: 6px; vertical-align: 1px; }
+
+  label.fl { display: block; font-size: 13px; font-weight: 700; color: var(--muted); margin: 0 0 5px; }
+  .inp { width: 100%; padding: 11px 12px; border-radius: 11px; border: 1px solid var(--line); background: var(--bg); color: var(--text); resize: none; line-height: 1.4; }
+  .inp:focus { border-color: var(--accent); outline: none; background: var(--card); }
+  .ecard { position: relative; }
+  .ecard .num { font-size: 13px; font-weight: 800; color: var(--muted); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+  .ecard .del { border: 0; background: transparent; color: var(--muted); width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; }
+  .ecard .del:hover { background: var(--bad-bg); color: var(--bad); }
+  .ecard .gap { height: 10px; }
+  .ecard .imgrow { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+  .ecard .imgrow img { width: 84px; height: 84px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); }
+  .smallbtn { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 7px 11px; font-size: 14px; font-weight: 600; display: inline-flex; gap: 6px; align-items: center; }
+  .smallbtn:hover { border-color: var(--accent); color: var(--accent); }
+  details.topt { margin-top: 10px; }
+  details.topt summary { cursor: pointer; font-size: 14.5px; font-weight: 650; color: var(--accent); }
+  details.topt .hintp { font-size: 13.5px; color: var(--muted); margin: 6px 0 8px; }
+  details.topt .inp { margin-bottom: 6px; }
+  .stickybar { position: sticky; bottom: 0; padding: 10px 0 calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg) 70%, transparent); display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stickybar .primary, .stickybar .secondary { margin: 0; }
+
+  .studytop { display: flex; justify-content: space-between; color: var(--muted); font-size: 14px; font-weight: 600; }
+  .progress { height: 6px; background: var(--line); border-radius: 99px; overflow: hidden; margin: 6px 0 12px; }
+  .progress > span { display: block; height: 100%; background: var(--accent); transition: width .25s; }
+  .flip { perspective: 1400px; height: min(56vh, 460px); margin: 6px 0 8px; cursor: pointer; touch-action: pan-y; user-select: none; -webkit-user-select: none; transition: transform .2s; }
+  .flip.drag { transition: none; }
+  .flip-in { position: relative; width: 100%; height: 100%; transition: transform .45s cubic-bezier(.2,.7,.2,1); transform-style: preserve-3d; }
+  .flip-in.flipped { transform: rotateY(180deg); }
+  .face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; background: var(--card); border: 1.5px solid var(--line);
+    border-radius: 22px; box-shadow: 0 6px 24px rgba(20,16,60,.08); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 34px 22px 22px; text-align: center; overflow: auto; }
+  .face.back { transform: rotateY(180deg); }
+  .flip.right .face { border-color: var(--ok); }
+  .flip.left .face { border-color: var(--bad); }
+  .face .side { position: absolute; top: 12px; left: 16px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
+  .face .txt { font-size: 25px; font-weight: 650; line-height: 1.3; white-space: pre-wrap; word-break: break-word; }
+  .face .txt.sm { font-size: 19px; font-weight: 560; }
+  .face .txt.xs { font-size: 16px; font-weight: 500; text-align: left; }
+  .face img { max-width: 100%; max-height: 55%; border-radius: 12px; margin-bottom: 12px; object-fit: contain; }
+  .face .note { color: var(--muted); font-size: 15px; margin-top: 12px; white-space: pre-wrap; }
+  .tap { text-align: center; color: var(--muted); font-size: 14px; margin: 0 0 10px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .bigbtn { border: 0; border-radius: 16px; padding: 15px 8px; font-weight: 750; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .bigbtn.no { background: var(--bad-bg); color: var(--bad); }
+  .bigbtn.yes { background: var(--ok-bg); color: var(--ok); }
+
+  .prompt { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 22px 18px; text-align: center; box-shadow: var(--shadow); margin-bottom: 14px; }
+  .prompt img { max-width: 100%; max-height: 260px; border-radius: 12px; margin-bottom: 10px; object-fit: contain; }
+  .prompt .txt { font-size: 21px; font-weight: 700; line-height: 1.35; white-space: pre-wrap; word-break: break-word; }
+  .opts { display: grid; gap: 10px; }
+  .opt { display: flex; gap: 12px; align-items: flex-start; width: 100%; text-align: left; background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 13px 14px; line-height: 1.4; }
+  .opt:hover:not([disabled]) { border-color: var(--accent); }
+  .opt .lt { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center; font-size: 13px; font-weight: 700; color: var(--muted); }
+  .opt span:last-child { white-space: pre-wrap; word-break: break-word; }
+  .opt[disabled] { cursor: default; }
+  .opt.ok { border-color: var(--ok); background: var(--ok-bg); }
+  .opt.ok .lt { background: var(--ok); border-color: var(--ok); color: #fff; }
+  .opt.bad { border-color: var(--bad); background: var(--bad-bg); }
+  .opt.bad .lt { background: var(--bad); border-color: var(--bad); color: #fff; }
+  .opt.dim { opacity: .55; }
+  .feedback { margin-top: 12px; border-radius: 14px; padding: 13px 14px; }
+  .feedback.ok { background: var(--ok-bg); }
+  .feedback.bad { background: var(--bad-bg); }
+  .feedback b { display: block; }
+  .feedback.ok b { color: var(--ok); }
+  .feedback.bad b { color: var(--bad); }
+  .feedback .ans { margin-top: 4px; white-space: pre-wrap; word-break: break-word; }
+  .feedback .note { color: var(--muted); margin-top: 6px; font-size: 15px; white-space: pre-wrap; }
+  .writebox { display: flex; gap: 8px; }
+  .writebox .inp { font-size: 17px; background: var(--card); }
+
+  .score { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 22px 16px; }
+  .ring { position: relative; width: 150px; height: 150px; }
+  .ring svg { transform: rotate(-90deg); }
+  .ring .pct { position: absolute; inset: 0; display: grid; place-items: center; font-size: 34px; font-weight: 800; }
+  .score .msg { font-size: 19px; font-weight: 700; margin: 12px 0 2px; }
+  .score .sub { color: var(--muted); margin-bottom: 6px; }
+  .miss { padding: 10px 0; border-top: 1px solid var(--line); }
+  .miss:first-child { border-top: 0; padding-top: 0; }
+  .miss .f { font-weight: 650; white-space: pre-wrap; }
+  .miss .b { color: var(--ok); white-space: pre-wrap; }
+
+  select.inp { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 34px; }
+  .help { font-size: 14.5px; color: var(--muted); margin: 0 0 12px; }
+  .help code { background: var(--accent-soft); color: var(--accent); padding: 1px 5px; border-radius: 5px; font-size: 13.5px; }
+  .pv { font-size: 14.5px; }
+  .pv .row { padding: 6px 0; border-top: 1px solid var(--line); }
+  .pv .row:first-child { border-top: 0; }
+  .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px); background: var(--text); color: var(--bg);
+    padding: 10px 16px; border-radius: 12px; font-weight: 600; font-size: 15px; opacity: 0; pointer-events: none; transition: .25s; z-index: 50; max-width: 90vw; text-align: center; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .footer { color: var(--muted); font-size: 13.5px; text-align: center; margin-top: 22px; }
+  .hint b { display: block; margin-bottom: 4px; }
+  .hint p { margin: 0; color: var(--muted); font-size: 15px; }
+  @media (max-width: 380px) { .mode small { display: none; } .face .txt { font-size: 22px; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="bar-in">
+    <button class="iconbtn" id="back" type="button" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="brand"><span class="dot" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><rect x="3" y="6" width="14" height="13" rx="2.5"/><path d="M7 3h11.5A2.5 2.5 0 0 1 21 5.5V16"/></svg></span><span>Kartītes</span></div>
+    <div class="lang" role="group" aria-label="Valoda / Language">
+      <button type="button" data-lang="lv">LV</button>
+      <button type="button" data-lang="en">EN</button>
+    </div>
+  </div>
+</header>
+<main id="view"></main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="imgInput" accept="image/*" hidden>
+<input type="file" id="fileInput" hidden>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ================= text ================= */
+  const plural = (n, one, many, zero) => (n === 0 && zero ? `0 ${zero}` : `${n} ${n % 10 === 1 && n % 100 !== 11 ? one : many}`);
+  const T = {
+    lv: {
+      myDecks: 'Mani komplekti', newDeck: 'Jauns komplekts',
+      emptyT: 'Vēl nav neviena komplekta', emptyP: 'Izveido savu pirmo kartīšu komplektu vai pievieno paraugu, lai redzētu, kā tas darbojas.',
+      addSample: 'Pievienot paraugu',
+      nCards: (n) => plural(n, 'kartīte', 'kartītes', 'kartīšu'),
+      nDecks: (n) => plural(n, 'komplekts', 'komplekti', 'komplektu'),
+      mastered: (m, n) => `Apgūtas ${m} no ${n}`,
+      flash: 'Kartītes', flashS: 'Apgriez un atzīmē', test: 'Tests', testS: 'Izvēlies atbildi', write: 'Rakstīšana', writeS: 'Ieraksti pats',
+      onlyNew: 'Tikai neapgūtās', shuffle: 'Jaukt secību', reverse: 'Jautāt ar atbildi',
+      edit: 'Rediģēt', importText: 'No teksta', exportDeck: 'Saglabāt failā', copyText: 'Kopēt tekstu', deleteDeck: 'Dzēst komplektu', confirmDelete: 'Pieskaries vēlreiz, lai dzēstu',
+      inDeck: 'Kartītes komplektā', noCards: 'Komplektā vēl nav kartīšu.', addCards: 'Pievienot kartītes',
+      title: 'Nosaukums', titlePh: 'piem., Gūžas anatomija', desc: 'Apraksts (nav obligāts)',
+      front: 'Priekšpuse – jautājums vai termins', back: 'Aizmugure – atbilde vai definīcija',
+      addImg: 'Pievienot attēlu', removeImg: 'Noņemt', testOpts: 'Testa varianti (nav obligāti)',
+      wrongN: (i) => `Nepareizā atbilde ${i}`, note: 'Skaidrojums – rādīsies pēc atbildes',
+      testHint: 'Ja nepareizās atbildes neieraksti, tests tās paņems no citām šī komplekta kartītēm.',
+      addCard: 'Pievienot kartīti', delCard: 'Dzēst kartīti', done: 'Gatavs', untitled: 'Bez nosaukuma', card: 'Kartīte',
+      importT: 'Pievienot no teksta', importHelp: 'Katra rinda ir viena kartīte. Jautājumu un atbildi atdali ar tabulāciju (iekopējot no Excel), <code> – </code>, <code>:</code> vai <code>;</code>. Testa jautājumam ar saviem variantiem raksti: <code>jautājums | pareizā | nepareizā | nepareizā | nepareizā</code>',
+      pasteHere: 'Iekopē vai ieraksti šeit…', separator: 'Atdalītājs', sepAuto: 'Automātiski', sepTab: 'Tabulācija (Excel)', sepDash: 'Domuzīme ( – )', sepColon: 'Kols ( : )', sepSemi: 'Semikols ( ; )', sepPipe: 'Vertikāla svītra ( | )',
+      found: (n) => `Atrastas ${plural(n, 'kartīte', 'kartītes', 'kartīšu')}`, addN: (n) => `Pievienot ${plural(n, 'kartīti', 'kartītes', 'kartīšu')}`, nothingFound: 'Vēl nav atrasta neviena kartīte.', skipped: (n) => `${plural(n, 'rinda', 'rindas')} bez atbildes ${n % 10 === 1 && n % 100 !== 11 ? 'izlaista' : 'izlaistas'}`,
+      tapFlip: 'Pieskaries kartītei, lai apgrieztu · velc pa labi = zinu, pa kreisi = jāmācās', know: 'Zinu', learning: 'Jāmācās',
+      sideQ: 'Jautājums', sideA: 'Atbilde',
+      check: 'Pārbaudīt', typeAnswer: 'Ieraksti atbildi…', dontKnow: 'Nezinu',
+      correct: 'Pareizi!', wrong: 'Nepareizi.', almost: 'Pareizi – neliela drukas kļūda.', correctIs: 'Pareizā atbilde:', yourAns: 'Tava atbilde:', countRight: 'Man bija pareizi',
+      next: 'Tālāk', finish: 'Skatīt rezultātu',
+      msg: (p) => p >= 90 ? 'Izcili!' : p >= 70 ? 'Labi padarīts!' : p >= 50 ? 'Tuvu – atkārto kļūdas.' : 'Turpini mācīties!',
+      score: (c, n) => `${c} no ${n} pareizi`, retryWrong: 'Atkārtot kļūdas', again: 'Vēlreiz no sākuma', backDeck: 'Atpakaļ uz komplektu', missed: 'Kļūdas',
+      needCards: 'Šim režīmam vajag vismaz vienu kartīti ar abām pusēm.', testNeed: 'Testam vajag vismaz 2 dažādas atbildes komplektā vai pašu ierakstītus nepareizos variantus.',
+      allMastered: 'Visas kartītes jau apgūtas! Izslēdz „Tikai neapgūtās”, lai atkārtotu visas.',
+      data: 'Dati un rezerves kopija', dataP: 'Tavi komplekti glabājas tikai šajā ierīcē. Saglabā rezerves kopiju, lai tie nepazustu, ja izdzēsīsi lietotni vai nomainīsi telefonu.',
+      exportAll: 'Saglabāt rezerves kopiju', importFile: 'Ielādēt no faila', importFileP: 'Atjauno rezerves kopiju vai pievieno kursa biedra komplektu (.json fails).',
+      importedN: (a, u) => `Pievienoti: ${a}, atjaunoti: ${u}`, badFile: 'Šo failu nevar nolasīt.', copied: 'Nokopēts', savedFile: 'Fails sagatavots',
+      noStorage: 'Šajā skatā saglabāšana nav pieejama – izmaiņas pazudīs pēc aizvēršanas. Instalē lietotni vai saglabā rezerves kopiju.',
+      saveFail: 'Neizdevās saglabāt failu.', shareCancel: 'Atcelts',
+      stats: (d, c) => `${plural(d, 'komplekts', 'komplekti', 'komplektu')} · ${plural(c, 'kartīte', 'kartītes', 'kartīšu')}`,
+      installT: 'Instalē savā iPhone', installP: 'Safari nospied „Kopīgot”, tad „Pievienot sākuma ekrānam”. Tā atvērsies kā lietotne un strādās bez interneta.',
+      sample: {
+        title: 'Paraugs: anatomiskie orientieri', desc: 'Parauga komplekts – vari to rediģēt vai izdzēst.',
+        cards: [
+          ['Vertebra prominens', 'C7'], ['Krūšu kaula jūga robs', 'T2–T3'], ['Lāpstiņas apakšējais leņķis', 'T7'],
+          ['Zobenveida izaugums', 'T9–T10'], ['Zarnu kaula cekuls', 'L4–L5'], ['Zarnu kaula priekšējais augšējais ērkšķis', 'S1–S2'],
+          ['Krūškurvja PA – fokusa–detektora attālums?', '180 cm', ['100 cm', '120 cm', '70 cm'], 'Lielāks attālums mazina sirds palielinājumu.'],
+          ['Gardena III stadija', 'Pilns lūzums, daļēji dislocēts', ['Nepilns vai valgus impaktēts', 'Pilns, bez dislokācijas', 'Pilns, pilnībā dislocēts'], ''],
+        ],
+      },
+    },
+    en: {
+      myDecks: 'My decks', newDeck: 'New deck',
+      emptyT: 'No decks yet', emptyP: 'Create your first flashcard deck, or add a sample to see how it works.',
+      addSample: 'Add a sample deck',
+      nCards: (n) => `${n} ${n === 1 ? 'card' : 'cards'}`, nDecks: (n) => `${n} ${n === 1 ? 'deck' : 'decks'}`,
+      mastered: (m, n) => `${m} of ${n} mastered`,
+      flash: 'Flashcards', flashS: 'Flip and mark', test: 'Test', testS: 'Pick the answer', write: 'Write', writeS: 'Type it yourself',
+      onlyNew: 'Only not mastered', shuffle: 'Shuffle', reverse: 'Ask with the answer',
+      edit: 'Edit', importText: 'From text', exportDeck: 'Save as file', copyText: 'Copy as text', deleteDeck: 'Delete deck', confirmDelete: 'Tap again to delete',
+      inDeck: 'Cards in this deck', noCards: 'This deck has no cards yet.', addCards: 'Add cards',
+      title: 'Title', titlePh: 'e.g. Hip anatomy', desc: 'Description (optional)',
+      front: 'Front – question or term', back: 'Back – answer or definition',
+      addImg: 'Add image', removeImg: 'Remove', testOpts: 'Test options (optional)',
+      wrongN: (i) => `Wrong answer ${i}`, note: 'Explanation – shown after answering',
+      testHint: 'If you leave the wrong answers empty, the test takes them from other cards in this deck.',
+      addCard: 'Add card', delCard: 'Delete card', done: 'Done', untitled: 'Untitled', card: 'Card',
+      importT: 'Add from text', importHelp: 'One card per line. Separate the question and answer with a tab (paste from Excel), <code> – </code>, <code>:</code> or <code>;</code>. For a test question with your own options write: <code>question | correct | wrong | wrong | wrong</code>',
+      pasteHere: 'Paste or type here…', separator: 'Separator', sepAuto: 'Automatic', sepTab: 'Tab (Excel)', sepDash: 'Dash ( – )', sepColon: 'Colon ( : )', sepSemi: 'Semicolon ( ; )', sepPipe: 'Vertical bar ( | )',
+      found: (n) => `Found ${n} ${n === 1 ? 'card' : 'cards'}`, addN: (n) => `Add ${n} ${n === 1 ? 'card' : 'cards'}`, nothingFound: 'No cards found yet.', skipped: (n) => `${n} lines without an answer skipped`,
+      tapFlip: 'Tap the card to flip · swipe right = know it, left = still learning', know: 'Know it', learning: 'Still learning',
+      sideQ: 'Question', sideA: 'Answer',
+      check: 'Check', typeAnswer: 'Type the answer…', dontKnow: 'I don’t know',
+      correct: 'Correct!', wrong: 'Incorrect.', almost: 'Correct – small typo.', correctIs: 'Correct answer:', yourAns: 'Your answer:', countRight: 'I was right',
+      next: 'Next', finish: 'See result',
+      msg: (p) => p >= 90 ? 'Excellent!' : p >= 70 ? 'Good job!' : p >= 50 ? 'Getting there – repeat your mistakes.' : 'Keep going!',
+      score: (c, n) => `${c} of ${n} correct`, retryWrong: 'Repeat mistakes', again: 'Start again', backDeck: 'Back to deck', missed: 'Mistakes',
+      needCards: 'This mode needs at least one card with both sides filled in.', testNeed: 'The test needs at least 2 different answers in the deck, or your own wrong options.',
+      allMastered: 'All cards are mastered! Turn off “Only not mastered” to go through all of them.',
+      data: 'Data & backup', dataP: 'Your decks are stored only on this device. Save a backup so they are not lost if you delete the app or change phones.',
+      exportAll: 'Save a backup', importFile: 'Load from file', importFileP: 'Restore a backup or add a classmate’s deck (.json file).',
+      importedN: (a, u) => `Added: ${a}, updated: ${u}`, badFile: 'This file can’t be read.', copied: 'Copied', savedFile: 'File ready',
+      noStorage: 'Saving isn’t available in this view – changes will be lost when you close it. Install the app or save a backup.',
+      saveFail: 'Could not save the file.', shareCancel: 'Cancelled',
+      stats: (d, c) => `${d} ${d === 1 ? 'deck' : 'decks'} · ${c} ${c === 1 ? 'card' : 'cards'}`,
+      installT: 'Install it on your iPhone', installP: 'In Safari tap Share, then Add to Home Screen. It will open like an app and work offline.',
+      sample: {
+        title: 'Sample: anatomical landmarks', desc: 'A sample deck – edit or delete it.',
+        cards: [
+          ['Vertebra prominens', 'C7'], ['Jugular notch of the sternum', 'T2–T3'], ['Inferior angle of the scapula', 'T7'],
+          ['Xiphoid process', 'T9–T10'], ['Iliac crest', 'L4–L5'], ['Anterior superior iliac spine (ASIS)', 'S1–S2'],
+          ['PA chest – source-to-image distance?', '180 cm', ['100 cm', '120 cm', '70 cm'], 'A longer distance reduces heart magnification.'],
+          ['Garden stage III', 'Complete fracture, partially displaced', ['Incomplete or valgus-impacted', 'Complete, undisplaced', 'Complete, fully displaced'], ''],
+        ],
+      },
+    },
+  };
+
+  /* ================= prefs (small, optional) ================= */
+  const PREF_KEY = 'kartites:prefs';
+  let prefs = {};
+  try { prefs = JSON.parse(localStorage.getItem(PREF_KEY) || '{}') || {}; } catch (e) { prefs = {}; }
+  const setPref = (k, v) => { prefs[k] = v; try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch (e) { /* ignore */ } };
+  let lang = prefs.lang || 'lv';
+  const t = () => T[lang];
+
+  /* ================= helpers ================= */
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  const normA = (s) => norm(s).replace(/[.,;:!?()"“”„'’«»]/g, ' ').replace(/\s+/g, ' ').trim();
+  function lev(a, b) {
+    if (a === b) return 0;
+    const m = a.length, n = b.length; if (!m) return n; if (!n) return m;
+    let prev = Array.from({ length: n + 1 }, (_, j) => j);
+    for (let i = 1; i <= m; i++) {
+      const cur = [i];
+      for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+    return prev[n];
+  }
+  const ICON = {
+    deck: '<rect x="3" y="6" width="14" height="13" rx="2.5"/><path d="M7 3h11.5A2.5 2.5 0 0 1 21 5.5V16"/>',
+    flash: '<rect x="4" y="5" width="16" height="14" rx="3"/><path d="M8 12h8"/>',
+    test: '<circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/>',
+    write: '<path d="M4 20h4l10.5-10.5a2.8 2.8 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    edit: '<path d="M4 20h4l10.5-10.5a2.8 2.8 0 0 0-4-4L4 16z"/>',
+    text: '<path d="M5 6h14M5 11h14M5 16h9"/>',
+    save: '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14"/>',
+    copy: '<rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+    trash: '<path d="M4.5 7h15M10 11v6M14 11v6M6.5 7l1 12.5h9L17.5 7M9.5 7V4.5h5V7"/>',
+    image: '<rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M20.5 16l-5-5-8.5 8"/>',
+    x: '<path d="M6 6l12 12M18 6L6 18"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    chev: '<path d="M9 5l7 7-7 7"/>',
+    data: '<ellipse cx="12" cy="6" rx="7.5" ry="3"/><path d="M4.5 6v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3V6M4.5 12v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6"/>',
+    upload: '<path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 19h14"/>',
+  };
+  const svg = (n, s) => `<svg width="${s || 22}" height="${s || 22}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
+
+  let toastTimer = null;
+  function toast(msg) {
+    const el = $('toast'); el.textContent = msg; el.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+  }
+
+  /* ================= storage (IndexedDB, falls back to memory) ================= */
+  let db = null, storageOk = false;
+  let decks = [];
+  function idbOpen() {
+    return new Promise((resolve, reject) => {
+      let req;
+      try { req = indexedDB.open('kartites', 1); } catch (e) { reject(e); return; }
+      req.onupgradeneeded = () => { req.result.createObjectStore('decks', { keyPath: 'id' }); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+      req.onblocked = () => reject(new Error('blocked'));
+    });
+  }
+  function idbAll() {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('decks', 'readonly');
+      const r = tx.objectStore('decks').getAll();
+      r.onsuccess = () => resolve(r.result || []);
+      r.onerror = () => reject(r.error);
+    });
+  }
+  function idbPut(deck) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('decks', 'readwrite');
+      tx.objectStore('decks').put(deck);
+      tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
+    });
+  }
+  function idbDel(id) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('decks', 'readwrite');
+      tx.objectStore('decks').delete(id);
+      tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error);
+    });
+  }
+  const pending = new Map();
+  function saveDeck(deck, now) {
+    deck.updated = Date.now();
+    if (!storageOk) return;
+    clearTimeout(pending.get(deck.id));
+    const run = () => { pending.delete(deck.id); idbPut(JSON.parse(JSON.stringify(deck))).catch(() => { storageOk = false; render(); }); };
+    if (now) run(); else pending.set(deck.id, setTimeout(run, 350));
+  }
+  function flushSaves() { for (const [id, tm] of pending) { clearTimeout(tm); const d = getDeck(id); if (d && storageOk) idbPut(JSON.parse(JSON.stringify(d))).catch(() => {}); } pending.clear(); }
+  window.addEventListener('pagehide', flushSaves);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSaves(); });
+  function removeDeck(id) {
+    decks = decks.filter((d) => d.id !== id);
+    clearTimeout(pending.get(id)); pending.delete(id);
+    if (storageOk) idbDel(id).catch(() => {});
+  }
+  const getDeck = (id) => decks.find((d) => d.id === id);
+
+  /* ================= model ================= */
+  const newCard = (front, back, wrong, note) => ({ id: uid(), front: front || '', back: back || '', img: null, wrong: [0, 1, 2].map((i) => (wrong && wrong[i]) || ''), note: note || '', box: 0, seen: 0 });
+  function newDeck(title, desc, cards) { const d = { id: uid(), title: title || '', desc: desc || '', created: Date.now(), updated: Date.now(), lastStudied: null, cards: cards || [] }; decks.unshift(d); saveDeck(d, true); return d; }
+  const usable = (c) => (c.front.trim() || c.img) && c.back.trim();
+  const isMastered = (c) => (c.box || 0) >= 2;
+  function mark(c, ok) { c.seen = (c.seen || 0) + 1; c.box = ok ? Math.min(3, (c.box || 0) + 1) : 0; }
+  function wrongPool(deck, card) {
+    const own = (card.wrong || []).map((s) => s.trim()).filter(Boolean);
+    const pool = own.length ? own : shuffle(deck.cards.filter((c) => c.id !== card.id && c.back.trim()).map((c) => c.back.trim()));
+    const out = [];
+    for (const w of pool) if (normA(w) !== normA(card.back) && !out.some((u) => normA(u) === normA(w))) out.push(w);
+    return out.slice(0, 3);
+  }
+  function cleanupDeck(id) {
+    const d = getDeck(id); if (!d) return;
+    const before = d.cards.length;
+    d.cards = d.cards.filter((c) => c.front.trim() || c.back.trim() || c.img);
+    if (!d.title.trim() && !d.cards.length) { removeDeck(id); return; }
+    if (d.cards.length !== before) saveDeck(d, true);
+  }
+
+  /* ================= routing ================= */
+  const view = $('view');
+  let session = null;
+  let lastRoute = '';
+  function parseRoute() {
+    const h = location.hash.replace(/^#/, '');
+    if (h === 'data') return { name: 'data' };
+    const m = /^(deck|edit|import|cards|test|write|done)-([a-z0-9]+)$/.exec(h);
+    if (m && getDeck(m[2])) return { name: m[1], id: m[2] };
+    return { name: 'home' };
+  }
+  function go(hash) { if (location.hash.replace(/^#/, '') === hash) render(); else location.hash = hash; }
+  window.addEventListener('hashchange', () => render());
+
+  function render(keepScroll) {
+    const r = parseRoute();
+    const key = r.name + (r.id ? '-' + r.id : '');
+    const prev = lastRoute;
+    if (prev.startsWith('edit-') && key !== prev) cleanupDeck(prev.slice(5));
+    const r2 = parseRoute();
+    if (r2.name !== r.name) { render(keepScroll); return; }
+    document.documentElement.lang = lang;
+    document.querySelectorAll('.lang button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
+    $('back').hidden = r.name === 'home';
+    $('back').setAttribute('aria-label', lang === 'en' ? 'Back' : 'Atpakaļ');
+    const fn = { home: renderHome, data: renderData, deck: renderDeck, edit: renderEdit, import: renderImport, cards: renderStudy, test: renderStudy, write: renderStudy, done: renderDone }[r.name];
+    fn(r);
+    if (!keepScroll && key !== prev) window.scrollTo(0, 0);
+    lastRoute = key;
+  }
+  function parentOf(r) {
+    if (r.name === 'deck' || r.name === 'data') return '';
+    if (r.id) return 'deck-' + r.id;
+    return '';
+  }
+
+  /* ================= home ================= */
+  function renderHome() {
+    const banner = storageOk ? '' : `<div class="banner">${esc(t().noStorage)}</div>`;
+    if (!decks.length) {
+      view.innerHTML = `${banner}
+        <div class="card empty">
+          <div class="big">${svg('deck', 34)}</div>
+          <h2>${esc(t().emptyT)}</h2>
+          <p>${esc(t().emptyP)}</p>
+          <button class="primary" type="button" data-act="new">${svg('plus')} ${esc(t().newDeck)}</button>
+          <button class="secondary" type="button" data-act="sample">${esc(t().addSample)}</button>
+        </div>
+        ${hintHtml()}
+        <p class="footer"><button class="linkbtn" type="button" data-go="data">${esc(t().data)}</button></p>`;
+      return;
+    }
+    const sorted = decks.slice().sort((a, b) => (b.lastStudied || b.updated) - (a.lastStudied || a.updated));
+    view.innerHTML = `${banner}
+      <h1>${esc(t().myDecks)}</h1>
+      <button class="primary" type="button" data-act="new" style="margin:10px 0 16px">${svg('plus')} ${esc(t().newDeck)}</button>
+      <div class="tiles">
+        ${sorted.map((d) => {
+          const n = d.cards.filter(usable).length, m = d.cards.filter((c) => usable(c) && isMastered(c)).length;
+          return `<button class="tile" type="button" data-go="deck-${d.id}">
+            <span class="ic">${svg('deck', 24)}</span>
+            <span class="tx"><span class="tt">${esc(d.title.trim() || t().untitled)}</span>
+              <span class="ts">${esc(t().nCards(n))}${n ? ' · ' + esc(t().mastered(m, n)) : ''}</span>
+              ${n ? `<span class="meter"><span style="width:${Math.round((m / n) * 100)}%"></span></span>` : ''}</span>
+            <span class="chev">${svg('chev', 20)}</span></button>`;
+        }).join('')}
+      </div>
+      ${hintHtml()}
+      <p class="footer"><button class="linkbtn" type="button" data-go="data">${esc(t().data)}</button></p>`;
+  }
+  function hintHtml() {
+    const topLevel = (() => { try { return window.self === window.top; } catch (e) { return false; } })();
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (!topLevel || !location.protocol.startsWith('http') || !isIOS || navigator.standalone) return '';
+    return `<div class="card hint" style="margin-top:14px"><b>${esc(t().installT)}</b><p>${esc(t().installP)}</p></div>`;
+  }
+
+  /* ================= deck ================= */
+  let armedDelete = false;
+  function renderDeck(r) {
+    const d = getDeck(r.id);
+    const cards = d.cards.filter(usable);
+    const m = cards.filter(isMastered).length;
+    armedDelete = false;
+    const tg = (key, label) => `<button class="tgl" type="button" data-toggle="${key}" aria-pressed="${String(!!prefs[key])}">${prefs[key] ? svg('check', 15) : ''}${esc(label)}</button>`;
+    view.innerHTML = `
+      <h1>${esc(d.title.trim() || t().untitled)}</h1>
+      ${d.desc.trim() ? `<p class="lede" style="margin-bottom:6px">${esc(d.desc)}</p>` : ''}
+      <p class="lede">${esc(t().nCards(cards.length))}${cards.length ? ' · ' + esc(t().mastered(m, cards.length)) : ''}</p>
+      ${cards.length ? `<div class="meter" style="margin:-8px 0 12px"><span style="width:${Math.round((m / cards.length) * 100)}%"></span></div>` : ''}
+      <div class="modes">
+        <button class="mode" type="button" data-study="cards"><span class="ic">${svg('flash')}</span><b>${esc(t().flash)}</b><small>${esc(t().flashS)}</small></button>
+        <button class="mode" type="button" data-study="test"><span class="ic">${svg('test')}</span><b>${esc(t().test)}</b><small>${esc(t().testS)}</small></button>
+        <button class="mode" type="button" data-study="write"><span class="ic">${svg('write')}</span><b>${esc(t().write)}</b><small>${esc(t().writeS)}</small></button>
+      </div>
+      <div class="toggles">${tg('onlyNew', t().onlyNew)}${tg('shuffle', t().shuffle)}${tg('reverse', t().reverse)}</div>
+      <div class="actions">
+        <button class="secondary" type="button" data-go="edit-${d.id}">${svg('edit', 18)} ${esc(t().edit)}</button>
+        <button class="secondary" type="button" data-go="import-${d.id}">${svg('text', 18)} ${esc(t().importText)}</button>
+        <button class="secondary" type="button" data-act="export-deck">${svg('save', 18)} ${esc(t().exportDeck)}</button>
+        <button class="secondary" type="button" data-act="copy-deck">${svg('copy', 18)} ${esc(t().copyText)}</button>
+      </div>
+      <p class="eyebrow">${esc(t().inDeck)}</p>
+      <div class="card clist">
+        ${d.cards.length ? d.cards.map((c) => `
+          <div class="row">
+            <span class="dotm ${isMastered(c) ? 'm2' : (c.box || 0) === 1 ? 'm1' : ''}"></span>
+            <div style="flex:1;min-width:0"><div class="f">${esc(c.front.trim() || '—')}${c.wrong.some((w) => w.trim()) ? `<span class="tag">${esc(t().test)}</span>` : ''}</div><div class="b">${esc(c.back.trim() || '—')}</div></div>
+            ${c.img ? `<img src="${c.img}" alt="">` : ''}
+          </div>`).join('') : `<p style="margin:0;color:var(--muted)">${esc(t().noCards)}</p>`}
+      </div>
+      ${!d.cards.length ? `<button class="primary" type="button" data-go="edit-${d.id}">${svg('plus')} ${esc(t().addCards)}</button>` : ''}
+      <button class="secondary danger" type="button" data-act="delete-deck" style="margin-top:18px">${svg('trash', 18)} <span>${esc(t().deleteDeck)}</span></button>`;
+  }
+
+  /* ================= editor ================= */
+  function cardEditor(c, i) {
+    const hasWrong = c.wrong.some((w) => w.trim()) || c.note.trim();
+    return `
+      <div class="card ecard" data-card="${c.id}">
+        <div class="num"><span>${esc(t().card)} ${i + 1}</span><button class="del" type="button" data-act="del-card" aria-label="${esc(t().delCard)}">${svg('trash', 18)}</button></div>
+        <label class="fl">${esc(t().front)}</label>
+        <textarea class="inp" rows="2" data-field="front">${esc(c.front)}</textarea>
+        <div class="gap"></div>
+        <label class="fl">${esc(t().back)}</label>
+        <textarea class="inp" rows="2" data-field="back">${esc(c.back)}</textarea>
+        <div class="imgrow">
+          ${c.img ? `<img src="${c.img}" alt=""><button class="smallbtn" type="button" data-act="rm-img">${svg('x', 16)} ${esc(t().removeImg)}</button>` : `<button class="smallbtn" type="button" data-act="add-img">${svg('image', 16)} ${esc(t().addImg)}</button>`}
+        </div>
+        <details class="topt" ${hasWrong ? 'open' : ''}>
+          <summary>${esc(t().testOpts)}</summary>
+          <p class="hintp">${esc(t().testHint)}</p>
+          ${[0, 1, 2].map((k) => `<input class="inp" data-field="wrong${k}" placeholder="${esc(t().wrongN(k + 1))}" value="${esc(c.wrong[k])}">`).join('')}
+          <textarea class="inp" rows="2" data-field="note" placeholder="${esc(t().note)}">${esc(c.note)}</textarea>
+        </details>
+      </div>`;
+  }
+  function renderEdit(r) {
+    const d = getDeck(r.id);
+    if (!d.cards.length) d.cards.push(newCard(), newCard());
+    view.innerHTML = `
+      <div class="card">
+        <label class="fl" for="dtitle">${esc(t().title)}</label>
+        <input class="inp" id="dtitle" data-deckfield="title" placeholder="${esc(t().titlePh)}" value="${esc(d.title)}">
+        <div class="gap" style="height:10px"></div>
+        <label class="fl" for="ddesc">${esc(t().desc)}</label>
+        <input class="inp" id="ddesc" data-deckfield="desc" value="${esc(d.desc)}">
+      </div>
+      <div id="ecards">${d.cards.map(cardEditor).join('')}</div>
+      <div class="stickybar">
+        <button class="secondary" type="button" data-act="add-card">${svg('plus', 18)} ${esc(t().addCard)}</button>
+        <button class="primary" type="button" data-go="deck-${d.id}">${svg('check', 18)} ${esc(t().done)}</button>
+      </div>`;
+    view.querySelectorAll('textarea').forEach(autosize);
+    if (!d.title) setTimeout(() => $('dtitle') && $('dtitle').focus(), 50);
+  }
+  function autosize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight + 2, 320) + 'px'; }
+  function renumber() { view.querySelectorAll('.ecard .num span').forEach((s, i) => { s.textContent = `${t().card} ${i + 1}`; }); }
+
+  view.addEventListener('input', (e) => {
+    const el = e.target;
+    const r = parseRoute();
+    if (r.name === 'edit') {
+      const d = getDeck(r.id);
+      if (el.dataset.deckfield) { d[el.dataset.deckfield] = el.value; saveDeck(d); return; }
+      const box = el.closest('[data-card]'); if (!box) return;
+      const c = d.cards.find((x) => x.id === box.dataset.card); if (!c) return;
+      const f = el.dataset.field;
+      if (f === 'front' || f === 'back' || f === 'note') c[f] = el.value;
+      else if (/^wrong\d$/.test(f)) c.wrong[Number(f.slice(5))] = el.value;
+      if (el.tagName === 'TEXTAREA') autosize(el);
+      saveDeck(d);
+    } else if (r.name === 'import') {
+      updateImportPreview();
+    }
+  });
+
+  /* images: downscale to keep storage small */
+  let imgTarget = null;
+  function readImage(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const max = 1000, sc = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+        const w = Math.round(img.naturalWidth * sc), h = Math.round(img.naturalHeight * sc);
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        resolve(cv.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('img')); };
+      img.src = url;
+    });
+  }
+  $('imgInput').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; e.target.value = '';
+    const r = parseRoute(); if (!f || !imgTarget || r.name !== 'edit') return;
+    const d = getDeck(r.id); const c = d.cards.find((x) => x.id === imgTarget); if (!c) return;
+    try { c.img = await readImage(f); saveDeck(d, true); replaceCardEditor(d, c); } catch (err) { toast(t().badFile); }
+  });
+  function replaceCardEditor(d, c) {
+    const box = view.querySelector(`[data-card="${c.id}"]`); if (!box) return;
+    const i = d.cards.indexOf(c);
+    const tmp = document.createElement('div'); tmp.innerHTML = cardEditor(c, i);
+    const nb = tmp.firstElementChild; box.replaceWith(nb); nb.querySelectorAll('textarea').forEach(autosize);
+  }
+
+  /* ================= import from text ================= */
+  function splitFirst(line, seps) {
+    for (const s of seps) { const i = line.indexOf(s); if (i > 0) return [line.slice(0, i), line.slice(i + s.length)]; }
+    return null;
+  }
+  function parseText(text, sep) {
+    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const out = []; let skipped = 0;
+    for (const line of lines) {
+      let parts = null;
+      const dash = [' – ', ' — ', ' - '];
+      if (sep === 'auto') {
+        if (line.includes('|')) parts = line.split('|');
+        else if (line.includes('\t')) parts = line.split('\t');
+        else parts = splitFirst(line, dash) || splitFirst(line, [':']) || splitFirst(line, [';']);
+      } else if (sep === 'tab') parts = line.split('\t');
+      else if (sep === 'pipe') parts = line.split('|');
+      else if (sep === 'dash') parts = splitFirst(line, dash);
+      else if (sep === 'colon') parts = splitFirst(line, [':']);
+      else if (sep === 'semi') parts = splitFirst(line, [';']);
+      parts = parts ? parts.map((s) => s.trim()) : null;
+      if (!parts || parts.length < 2 || !parts[0] || !parts[1]) { skipped++; continue; }
+      out.push(newCard(parts[0], parts[1], parts.slice(2, 5), ''));
+    }
+    return { cards: out, skipped };
+  }
+  function renderImport(r) {
+    const sep = prefs.sep || 'auto';
+    const opt = (v, l) => `<option value="${v}" ${sep === v ? 'selected' : ''}>${esc(l)}</option>`;
+    view.innerHTML = `
+      <h1>${esc(t().importT)}</h1>
+      <p class="help">${t().importHelp}</p>
+      <textarea class="inp" id="itext" rows="9" placeholder="${esc(t().pasteHere)}" style="background:var(--card)"></textarea>
+      <div style="margin:12px 0">
+        <label class="fl" for="isep">${esc(t().separator)}</label>
+        <select class="inp" id="isep">${opt('auto', t().sepAuto)}${opt('tab', t().sepTab)}${opt('dash', t().sepDash)}${opt('colon', t().sepColon)}${opt('semi', t().sepSemi)}${opt('pipe', t().sepPipe)}</select>
+      </div>
+      <div class="card pv" id="ipreview"></div>
+      <button class="primary" type="button" id="iadd" data-act="do-import" disabled>${esc(t().addN(0))}</button>`;
+    $('isep').addEventListener('change', (e) => { setPref('sep', e.target.value); updateImportPreview(); });
+    updateImportPreview();
+  }
+  function updateImportPreview() {
+    const el = $('itext'); if (!el) return;
+    const { cards, skipped } = parseText(el.value, $('isep').value);
+    $('ipreview').innerHTML = cards.length
+      ? `<b>${esc(t().found(cards.length))}</b>${skipped ? ` <span style="color:var(--muted)">· ${esc(t().skipped(skipped))}</span>` : ''}
+         ${cards.slice(0, 6).map((c) => `<div class="row"><b>${esc(c.front)}</b> → ${esc(c.back)}${c.wrong.some(Boolean) ? ` <span class="tag">${esc(t().test)}</span>` : ''}</div>`).join('')}
+         ${cards.length > 6 ? '<div class="row" style="color:var(--muted)">…</div>' : ''}`
+      : `<span style="color:var(--muted)">${esc(t().nothingFound)}</span>`;
+    $('iadd').disabled = !cards.length;
+    $('iadd').textContent = t().addN(cards.length);
+  }
+
+  /* ================= study ================= */
+  function buildSession(deckId, mode, onlyIds) {
+    const d = getDeck(deckId);
+    let cards = d.cards.filter(usable);
+    if (onlyIds) cards = cards.filter((c) => onlyIds.includes(c.id));
+    else if (prefs.onlyNew) cards = cards.filter((c) => !isMastered(c));
+    if (mode === 'test') cards = cards.filter((c) => wrongPool(d, c).length >= 1);
+    if (prefs.shuffle) shuffle(cards);
+    return { deckId, mode, ids: cards.map((c) => c.id), i: 0, results: [], flipped: false, answer: null, opts: null, reverse: !!prefs.reverse && mode !== 'test', retry: !!onlyIds };
+  }
+  function ensureSession(r) {
+    if (!session || session.deckId !== r.id || session.mode !== r.name) session = buildSession(r.id, r.name);
+    return session;
+  }
+  function sides(c, s) {
+    const q = s.reverse ? { text: c.back, img: null } : { text: c.front, img: c.img };
+    const a = s.reverse ? { text: c.front, img: c.img } : { text: c.back, img: null };
+    return { q, a };
+  }
+  const sizeCls = (s) => (s.length > 220 ? 'xs' : s.length > 70 ? 'sm' : '');
+
+  function renderStudy(r) {
+    const s = ensureSession(r);
+    const d = getDeck(r.id);
+    if (!s.ids.length) {
+      const total = d.cards.filter(usable);
+      let msg = r.name === 'test' ? t().testNeed : t().needCards;
+      if (prefs.onlyNew && total.length && total.every(isMastered)) msg = t().allMastered;
+      view.innerHTML = `<div class="card empty"><div class="big">${svg(r.name === 'cards' ? 'flash' : r.name, 34)}</div><p>${esc(msg)}</p>
+        <button class="primary" type="button" data-go="${total.length ? 'deck-' + d.id : 'edit-' + d.id}">${esc(total.length ? t().backDeck : t().addCards)}</button></div>`;
+      return;
+    }
+    if (s.i >= s.ids.length) { go('done-' + d.id); return; }
+    const c = d.cards.find((x) => x.id === s.ids[s.i]);
+    if (!c) { s.ids.splice(s.i, 1); renderStudy(r); return; }
+    const top = `<div class="studytop"><span>${esc(r.name === 'cards' ? t().flash : r.name === 'test' ? t().test : t().write)}</span><span>${s.i + 1} / ${s.ids.length}</span></div>
+      <div class="progress"><span style="width:${(s.i / s.ids.length) * 100}%"></span></div>`;
+    const { q, a } = sides(c, s);
+    if (r.name === 'cards') {
+      view.innerHTML = `${top}
+        <div class="flip" id="flip">
+          <div class="flip-in ${s.flipped ? 'flipped' : ''}" id="flipIn">
+            <div class="face front"><span class="side">${esc(t().sideQ)}</span>${q.img ? `<img src="${q.img}" alt="">` : ''}<div class="txt ${sizeCls(q.text)}">${esc(q.text)}</div></div>
+            <div class="face back"><span class="side">${esc(t().sideA)}</span>${a.img ? `<img src="${a.img}" alt="">` : ''}<div class="txt ${sizeCls(a.text)}">${esc(a.text)}</div>${c.note.trim() ? `<div class="note">${esc(c.note)}</div>` : ''}</div>
+          </div>
+        </div>
+        <p class="tap">${esc(t().tapFlip)}</p>
+        <div class="two">
+          <button class="bigbtn no" type="button" data-act="learning">${svg('x', 20)} ${esc(t().learning)}</button>
+          <button class="bigbtn yes" type="button" data-act="know">${svg('check', 20)} ${esc(t().know)}</button>
+        </div>`;
+      attachSwipe();
+      return;
+    }
+    const prompt = `<div class="prompt">${q.img ? `<img src="${q.img}" alt="">` : ''}<div class="txt">${esc(q.text)}</div></div>`;
+    if (r.name === 'test') {
+      if (!s.opts || s.opts.cardId !== c.id) s.opts = { cardId: c.id, list: shuffle([c.back.trim(), ...wrongPool(d, c)]) };
+      const answered = s.answer !== null;
+      const letters = 'ABCD';
+      const ok = answered && normA(s.answer) === normA(c.back);
+      view.innerHTML = `${top}${prompt}
+        <div class="opts">${s.opts.list.map((o, k) => {
+          let cls = '';
+          if (answered) cls = normA(o) === normA(c.back) ? 'ok' : (o === s.answer ? 'bad' : 'dim');
+          return `<button class="opt ${cls}" type="button" data-opt="${k}" ${answered ? 'disabled' : ''}><span class="lt">${letters[k]}</span><span>${esc(o)}</span></button>`;
+        }).join('')}</div>
+        ${answered ? `<div class="feedback ${ok ? 'ok' : 'bad'}" id="fb"><b>${esc(ok ? t().correct : t().wrong)}</b>${ok ? '' : `<div class="ans"><strong>${esc(t().correctIs)}</strong> ${esc(c.back)}</div>`}${c.note.trim() ? `<div class="note">${esc(c.note)}</div>` : ''}</div>
+          <button class="primary" type="button" data-act="next" style="margin-top:12px">${esc(s.i + 1 < s.ids.length ? t().next : t().finish)}</button>` : ''}`;
+      return;
+    }
+    // write
+    const answered = s.answer !== null;
+    const res = answered ? s.verdict : null;
+    view.innerHTML = `${top}${prompt}
+      ${answered ? '' : `<form class="writebox" id="wform" autocomplete="off"><input class="inp" id="winput" placeholder="${esc(t().typeAnswer)}" autocapitalize="off" autocorrect="off" spellcheck="false"><button class="primary" type="submit" style="width:auto;padding:0 18px">${esc(t().check)}</button></form>
+        <button class="secondary" type="button" data-act="dont-know">${esc(t().dontKnow)}</button>`}
+      ${answered ? `<div class="feedback ${res !== 'wrong' ? 'ok' : 'bad'}" id="fb">
+          <b>${esc(res === 'right' ? t().correct : res === 'almost' ? t().almost : t().wrong)}</b>
+          ${s.answer ? `<div class="ans">${esc(t().yourAns)} ${esc(s.answer)}</div>` : ''}
+          ${res !== 'right' ? `<div class="ans"><strong>${esc(t().correctIs)}</strong> ${esc(a.text)}</div>` : ''}
+          ${c.note.trim() ? `<div class="note">${esc(c.note)}</div>` : ''}
+        </div>
+        ${res === 'wrong' && s.answer ? `<button class="secondary" type="button" data-act="override">${esc(t().countRight)}</button>` : ''}
+        <button class="primary" type="button" data-act="next" id="wnext" style="margin-top:12px">${esc(s.i + 1 < s.ids.length ? t().next : t().finish)}</button>` : ''}`;
+    if (!answered) {
+      const inp = $('winput');
+      try { inp.focus({ preventScroll: true }); } catch (e) { inp.focus(); }
+      $('wform').addEventListener('submit', (e) => { e.preventDefault(); submitWrite(inp.value); });
+    } else {
+      const n = $('wnext'); if (n) { try { n.focus({ preventScroll: true }); } catch (e) { n.focus(); } }
+    }
+  }
+
+  function currentCard() { const d = getDeck(session.deckId); return { d, c: d.cards.find((x) => x.id === session.ids[session.i]) }; }
+  function record(ok) {
+    const { d, c } = currentCard();
+    session.prevBox = c.box || 0;
+    mark(c, ok);
+    session.results[session.i] = { id: c.id, ok };
+    saveDeck(d);
+  }
+  function advance() {
+    session.i++; session.flipped = false; session.answer = null; session.verdict = null; session.opts = null;
+    const d = getDeck(session.deckId);
+    if (session.i >= session.ids.length) { d.lastStudied = Date.now(); saveDeck(d, true); go('done-' + d.id); }
+    else { renderStudy(parseRoute()); window.scrollTo(0, 0); }
+  }
+  function judgeWrite(input, answer) {
+    const x = normA(input); if (!x) return 'wrong';
+    const alts = [answer, ...answer.split(/\s+\/\s+|;|\n/)].map(normA).filter(Boolean);
+    if (alts.includes(x)) return 'right';
+    for (const alt of alts) if (alt.length >= 4 && lev(x, alt) <= Math.max(1, Math.floor(alt.length * 0.12))) return 'almost';
+    return 'wrong';
+  }
+  function submitWrite(val) {
+    const { c } = currentCard();
+    const ans = session.reverse ? c.front : c.back;
+    session.answer = val.trim();
+    session.verdict = judgeWrite(val, ans);
+    record(session.verdict !== 'wrong');
+    renderStudy(parseRoute());
+    const fb = $('fb'); if (fb) fb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function attachSwipe() {
+    const el = $('flip'); if (!el) return;
+    let x0 = null, y0 = 0, dx = 0, moved = false;
+    el.addEventListener('pointerdown', (e) => { x0 = e.clientX; y0 = e.clientY; dx = 0; moved = false; el.classList.add('drag'); el.setPointerCapture && el.setPointerCapture(e.pointerId); });
+    el.addEventListener('pointermove', (e) => {
+      if (x0 === null) return;
+      dx = e.clientX - x0; const dy = e.clientY - y0;
+      if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) moved = true;
+      if (!moved) return;
+      el.style.transform = `translateX(${dx}px) rotate(${dx / 25}deg)`;
+      el.classList.toggle('right', dx > 60); el.classList.toggle('left', dx < -60);
+    });
+    const end = () => {
+      if (x0 === null) return;
+      el.classList.remove('drag');
+      if (moved && Math.abs(dx) > 90) {
+        el.style.transform = `translateX(${dx > 0 ? 600 : -600}px) rotate(${dx > 0 ? 20 : -20}deg)`;
+        const ok = dx > 0; setTimeout(() => { record(ok); advance(); }, 160);
+      } else if (!moved) {
+        session.flipped = !session.flipped; $('flipIn').classList.toggle('flipped', session.flipped);
+      } else {
+        el.style.transform = ''; el.classList.remove('right', 'left');
+      }
+      x0 = null;
+    };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', () => { x0 = null; el.classList.remove('drag', 'right', 'left'); el.style.transform = ''; });
+  }
+
+  /* ================= results ================= */
+  function renderDone(r) {
+    const d = getDeck(r.id);
+    if (!session || session.deckId !== r.id || !session.results.length) { go('deck-' + r.id); return; }
+    const res = session.results.filter(Boolean);
+    const n = res.length, c = res.filter((x) => x.ok).length, pct = n ? Math.round((c / n) * 100) : 0;
+    const missed = res.filter((x) => !x.ok).map((x) => d.cards.find((k) => k.id === x.id)).filter(Boolean);
+    const rr = 64, circ = 2 * Math.PI * rr;
+    const col = pct >= 70 ? 'var(--ok)' : pct >= 50 ? 'var(--accent)' : 'var(--bad)';
+    view.innerHTML = `
+      <div class="card score">
+        <div class="ring"><svg width="150" height="150" viewBox="0 0 150 150" aria-hidden="true">
+          <circle cx="75" cy="75" r="${rr}" fill="none" stroke="var(--line)" stroke-width="12"/>
+          <circle cx="75" cy="75" r="${rr}" fill="none" stroke="${col}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${circ * (1 - pct / 100)}"/>
+        </svg><div class="pct">${pct}%</div></div>
+        <div class="msg">${esc(t().msg(pct))}</div>
+        <div class="sub">${esc(t().score(c, n))} · ${esc(d.title.trim() || t().untitled)}</div>
+        ${missed.length ? `<button class="primary" type="button" data-act="retry-wrong">${esc(t().retryWrong)} (${missed.length})</button>` : ''}
+        <button class="${missed.length ? 'secondary' : 'primary'}" type="button" data-act="again">${esc(t().again)}</button>
+        <button class="secondary" type="button" data-go="deck-${d.id}">${esc(t().backDeck)}</button>
+      </div>
+      ${missed.length ? `<p class="eyebrow">${esc(t().missed)}</p><div class="card">${missed.map((k) => `<div class="miss"><div class="f">${esc(k.front || '—')}</div><div class="b">${esc(k.back)}</div></div>`).join('')}</div>` : ''}`;
+  }
+
+  /* ================= data / backup ================= */
+  function renderData() {
+    const cardsN = decks.reduce((s, d) => s + d.cards.filter(usable).length, 0);
+    view.innerHTML = `
+      <h1>${esc(t().data)}</h1>
+      ${storageOk ? '' : `<div class="banner">${esc(t().noStorage)}</div>`}
+      <p class="lede">${esc(t().dataP)}</p>
+      <div class="card"><b>${esc(t().stats(decks.length, cardsN))}</b>
+        <button class="primary" type="button" data-act="export-all" style="margin-top:12px" ${decks.length ? '' : 'disabled'}>${svg('save')} ${esc(t().exportAll)}</button>
+      </div>
+      <div class="card"><p class="help" style="margin-bottom:0">${esc(t().importFileP)}</p>
+        <button class="secondary" type="button" data-act="import-file">${svg('upload')} ${esc(t().importFile)}</button>
+      </div>`;
+  }
+  const hasHost = !!(window.claude && typeof window.claude.use === 'function');
+  const hostDownloads = hasHost ? window.claude.use('downloads').catch(() => null) : null;
+  function fileName(base) { return (base || 'kartites').replace(/[\\/:*?"<>|]+/g, '_').trim().slice(0, 60) + '.json'; }
+  function exportPayload(list) { return JSON.stringify({ app: 'kartites', version: 1, exported: new Date().toISOString(), decks: list }, null, 1); }
+  function saveFile(name, text) {
+    const blob = new Blob([text], { type: 'application/json' });
+    if (hasHost) {
+      hostDownloads.then((dl) => { if (!dl) throw new Error('unavailable'); return dl.save({ filename: name, data: blob }); })
+        .then(() => toast(t().savedFile)).catch((e) => { if (!(e && e.code === 'declined')) toast(t().saveFail); });
+      return;
+    }
+    let file = null;
+    try { file = new File([blob], name, { type: 'application/json' }); } catch (e) { file = null; }
+    if (file && navigator.canShare && navigator.share) {
+      let can = false; try { can = navigator.canShare({ files: [file] }); } catch (e) { can = false; }
+      if (can) {
+        navigator.share({ files: [file] }).catch((e) => { if (!e || e.name !== 'AbortError') downloadBlob(blob, name); });
+        return;
+      }
+    }
+    downloadBlob(blob, name);
+  }
+  function downloadBlob(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    toast(t().savedFile);
+  }
+  function deckAsText(d) { return d.cards.filter(usable).map((c) => [c.front, c.back, ...c.wrong.filter((w) => w.trim())].map((s) => s.replace(/[\t\n|]+/g, ' ').trim()).join(c.wrong.some((w) => w.trim()) ? ' | ' : '\t')).join('\n'); }
+  function sanitizeDeck(x) {
+    if (!x || typeof x !== 'object' || !Array.isArray(x.cards)) return null;
+    const str = (v) => (typeof v === 'string' ? v : '');
+    return {
+      id: /^[a-z0-9]{4,40}$/.test(x.id || '') ? x.id : uid(),
+      title: str(x.title).slice(0, 200), desc: str(x.desc).slice(0, 500),
+      created: Number(x.created) || Date.now(), updated: Number(x.updated) || Date.now(), lastStudied: Number(x.lastStudied) || null,
+      cards: x.cards.filter((c) => c && typeof c === 'object').map((c) => ({
+        id: /^[a-z0-9]{4,40}$/.test(c.id || '') ? c.id : uid(),
+        front: str(c.front), back: str(c.back),
+        img: typeof c.img === 'string' && /^data:image\/(jpeg|png|webp|gif);base64,/.test(c.img) ? c.img : null,
+        wrong: [0, 1, 2].map((i) => str(Array.isArray(c.wrong) ? c.wrong[i] : '')), note: str(c.note),
+        box: Math.max(0, Math.min(3, Number(c.box) || 0)), seen: Number(c.seen) || 0,
+      })),
+    };
+  }
+  $('fileInput').addEventListener('change', (e) => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      let obj; try { obj = JSON.parse(rd.result); } catch (err) { toast(t().badFile); return; }
+      const list = Array.isArray(obj && obj.decks) ? obj.decks : (obj && Array.isArray(obj.cards) ? [obj] : null);
+      if (!list) { toast(t().badFile); return; }
+      let added = 0, updated = 0;
+      for (const raw of list) {
+        const nd = sanitizeDeck(raw); if (!nd) continue;
+        const ex = getDeck(nd.id);
+        if (ex) { if (nd.updated >= ex.updated) { Object.assign(ex, nd); saveDeck(ex, true); updated++; } }
+        else { decks.unshift(nd); saveDeck(nd, true); added++; }
+      }
+      if (!added && !updated) { toast(t().badFile); return; }
+      toast(t().importedN(added, updated));
+      go('');
+    };
+    rd.onerror = () => toast(t().badFile);
+    rd.readAsText(f);
+  });
+
+  /* ================= clicks ================= */
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('button'); if (!el) return;
+    const r = parseRoute();
+    if (el.dataset.lang) { lang = el.dataset.lang; setPref('lang', lang); render(true); return; }
+    if (el.id === 'back') { go(parentOf(r)); return; }
+    if (el.dataset.go !== undefined) { go(el.dataset.go); return; }
+    if (el.dataset.study) { session = buildSession(r.id, el.dataset.study); go(el.dataset.study + '-' + r.id); return; }
+    if (el.dataset.toggle) { setPref(el.dataset.toggle, !prefs[el.dataset.toggle]); renderDeck(r); return; }
+    if (el.dataset.opt !== undefined) {
+      if (session.answer !== null) return;
+      session.answer = session.opts.list[Number(el.dataset.opt)];
+      const { c } = currentCard();
+      record(normA(session.answer) === normA(c.back));
+      renderStudy(r);
+      const fb = $('fb'); if (fb) fb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return;
+    }
+    switch (el.dataset.act) {
+      case 'new': { const d = newDeck('', '', [newCard(), newCard()]); go('edit-' + d.id); break; }
+      case 'sample': {
+        const sm = t().sample;
+        const d = newDeck(sm.title, sm.desc, sm.cards.map((x) => newCard(x[0], x[1], x[2], x[3])));
+        go('deck-' + d.id); break;
+      }
+      case 'add-card': {
+        const d = getDeck(r.id); const c = newCard(); d.cards.push(c); saveDeck(d);
+        const tmp = document.createElement('div'); tmp.innerHTML = cardEditor(c, d.cards.length - 1);
+        const nb = tmp.firstElementChild; $('ecards').appendChild(nb);
+        nb.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => nb.querySelector('textarea').focus(), 250);
+        break;
+      }
+      case 'del-card': {
+        const d = getDeck(r.id); const box = el.closest('[data-card]');
+        d.cards = d.cards.filter((c) => c.id !== box.dataset.card); box.remove(); renumber(); saveDeck(d); break;
+      }
+      case 'add-img': imgTarget = el.closest('[data-card]').dataset.card; $('imgInput').click(); break;
+      case 'rm-img': {
+        const d = getDeck(r.id); const c = d.cards.find((x) => x.id === el.closest('[data-card]').dataset.card);
+        if (c) { c.img = null; saveDeck(d); replaceCardEditor(d, c); } break;
+      }
+      case 'do-import': {
+        const { cards } = parseText($('itext').value, $('isep').value);
+        if (!cards.length) break;
+        const d = getDeck(r.id);
+        d.cards = d.cards.filter((c) => c.front.trim() || c.back.trim() || c.img).concat(cards);
+        saveDeck(d, true); toast(t().addN(cards.length) + ' ✓'); go('deck-' + d.id); break;
+      }
+      case 'know': record(true); advance(); break;
+      case 'learning': record(false); advance(); break;
+      case 'next': advance(); break;
+      case 'dont-know': submitWrite(''); break;
+      case 'override': {
+        session.verdict = 'right';
+        const { d, c } = currentCard();
+        c.box = Math.min(3, (session.prevBox || 0) + 1); // count it as a correct answer instead
+        session.results[session.i] = { id: c.id, ok: true };
+        saveDeck(d); renderStudy(r); break;
+      }
+      case 'retry-wrong': {
+        const ids = session.results.filter((x) => x && !x.ok).map((x) => x.id);
+        session = buildSession(r.id, session.mode, ids); go(session.mode + '-' + r.id); break;
+      }
+      case 'again': { const mode = session.mode; session = buildSession(r.id, mode); go(mode + '-' + r.id); break; }
+      case 'export-deck': { const d = getDeck(r.id); saveFile(fileName(d.title || 'kartites'), exportPayload([d])); break; }
+      case 'copy-deck': {
+        const txt = deckAsText(getDeck(r.id));
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => toast(t().copied)).catch(() => toast(t().saveFail));
+        break;
+      }
+      case 'delete-deck': {
+        if (!armedDelete) { armedDelete = true; el.classList.add('armed'); el.querySelector('span').textContent = t().confirmDelete; break; }
+        removeDeck(r.id); go(''); break;
+      }
+      case 'export-all': saveFile(fileName('kartites-rezerves-kopija-' + new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)), exportPayload(decks)); break;
+      case 'import-file': $('fileInput').click(); break;
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    const r = parseRoute();
+    if (r.name === 'cards' && session && session.ids.length && !e.target.closest('input,textarea')) {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); session.flipped = !session.flipped; const fi = $('flipIn'); if (fi) fi.classList.toggle('flipped', session.flipped); }
+      else if (e.key === 'ArrowRight') { record(true); advance(); }
+      else if (e.key === 'ArrowLeft') { record(false); advance(); }
+    }
+  });
+
+  /* ================= start ================= */
+  async function start() {
+    try {
+      db = await idbOpen();
+      decks = await idbAll();
+      storageOk = true;
+      if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+    } catch (e) {
+      storageOk = false; decks = [];
+    }
+    render();
+  }
+  const topLevel = (() => { try { return window.self === window.top; } catch (e) { return false; } })();
+  if (topLevel && location.protocol.startsWith('http') && 'serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
+  start();
+})();
+</script>
+</body>
+</html>
